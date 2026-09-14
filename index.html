@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Task IEThaisoftware - Daily Task & Activity Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Font Awesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        .active-member-pill {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+            border-color: #3b82f6 !important;
+            transform: translateY(-1px);
+        }
+        .active-date-pill {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+            border-color: #0f172a !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-900 text-white p-4 shadow-xl sticky top-0 z-40 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4">
+            
+            <div class="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2.5 rounded-2xl shadow-lg shadow-blue-500/30">
+                        <i class="fas fa-calendar-check text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-extrabold tracking-wide text-white flex items-center gap-2">
+                            Daily Task IEThaisoftware
+                            <span class="text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">Daily Standup</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">ระบบติดตามและบันทึกภารกิจประจำวัน TO DO LIST & ผลงานความคืบหน้ารายวัน</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="flex flex-wrap items-center justify-center lg:justify-end gap-2 w-full lg:w-auto">
+                <div class="flex items-center bg-slate-800 rounded-xl px-3 py-1.5 text-sm border border-slate-700">
+                    <span class="text-slate-400 mr-2 text-xs font-semibold">มุมมองวิศวกร:</span>
+                    <select id="currentUser" onchange="selectMember(this.value)" class="bg-transparent text-white font-bold focus:outline-none cursor-pointer text-xs sm:text-sm">
+                        <option value="ALL" class="bg-slate-800">แสดงทุกคน (Team Overview)</option>
+                    </select>
+                </div>
+
+                <button onclick="openModal('todoModal')" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fas fa-plus-circle"></i> + ลงงานประจำวัน
+                </button>
+
+                <button onclick="openModal('memberModal')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow transition flex items-center gap-1.5 active:scale-95" title="จัดการรายชื่อวิศวกร (เพิ่ม/ลบ)">
+                    <i class="fas fa-users-gear"></i> จัดการทีม
+                </button>
+
+                <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow transition flex items-center gap-1.5" title="Export to CSV">
+                    <i class="fas fa-file-export text-amber-400"></i> Export CSV
+                </button>
+
+                <button onclick="openModal('gsheetModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-1.5" title="Google Sheet Sync">
+                    <i class="fas fa-cloud-arrow-up text-blue-400"></i> Sync Sheet <span class="text-[9px] text-emerald-300">AUTO</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6 flex-1 w-full">
+
+        <!-- Member & Daily Filter Bar -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3.5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fas fa-users text-blue-600"></i> เลือกรายชื่อวิศวกร
+                    </span>
+                    <button onclick="openModal('memberModal')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-blue-700 px-2 py-0.5 rounded-lg border border-slate-300 font-semibold flex items-center gap-1">
+                        <i class="fas fa-user-plus"></i> เพิ่ม / จัดการคน
+                    </button>
+                </div>
+                <span id="activeUserBadge" class="text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-200 self-start sm:self-auto">
+                    Active: แสดงทุกคน (Team Overview)
+                </span>
+            </div>
+            
+            <div class="flex flex-wrap gap-2" id="memberPillContainer"></div>
+
+            <div class="pt-3 border-t border-slate-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i class="fas fa-clock-rotate-left text-blue-600"></i> ช่วงเวลางาน:
+                    </span>
+                    <button onclick="setDatePreset('all')" id="preset-all" class="date-preset active-date-pill text-xs font-semibold px-3 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-200">ทั้งหมด</button>
+                    <button onclick="setDatePreset('today')" id="preset-today" class="date-preset text-xs font-semibold px-3 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-200">วันนี้</button>
+                    <button onclick="setDatePreset('yesterday')" id="preset-yesterday" class="date-preset text-xs font-semibold px-3 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-200">เมื่อวาน</button>
+                    <button onclick="setDatePreset('thisWeek')" id="preset-thisWeek" class="date-preset text-xs font-semibold px-3 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-200">สัปดาห์นี้</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <div class="flex items-center gap-1 text-xs">
+                        <span class="text-slate-500 font-medium">ระบุวันที่:</span>
+                        <input type="date" id="startDateFilter" onchange="filterByCalendarRange()" class="border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                        <span class="text-slate-500">-</span>
+                        <input type="date" id="endDateFilter" onchange="filterByCalendarRange()" class="border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                    </div>
+                    <button onclick="clearCalendarFilter()" class="text-xs text-slate-600 hover:text-slate-900 px-2.5 py-1 border border-slate-300 rounded-lg bg-white font-medium shadow-sm transition">
+                        <i class="fas fa-rotate-left"></i> รีเซ็ต
+                    </button>
+                </div>
+            </div>
+            <div id="filterResultNotice" class="text-xs text-blue-800 font-medium flex items-center gap-1.5 px-1">
+                <i class="fas fa-info-circle text-blue-600"></i> กำลังแสดงข้อมูลงานทั้งหมด
+            </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-4.5 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-blue-500 flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">คะแนนความสำเร็จเฉลี่ย</span>
+                    <i class="fas fa-award text-blue-500 bg-blue-50 p-2 rounded-xl text-sm"></i>
+                </div>
+                <div class="mt-2">
+                    <h2 id="avgScore" class="text-3xl font-extrabold text-slate-800">0.0%</h2>
+                    <span class="text-[11px] text-slate-400">Daily Task Achievement</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4.5 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-indigo-500 flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">จำนวน Daily Task ทั้งหมด</span>
+                    <i class="fas fa-list-check text-indigo-500 bg-indigo-50 p-2 rounded-xl text-sm"></i>
+                </div>
+                <div class="mt-2">
+                    <h2 id="totalProjects" class="text-3xl font-extrabold text-slate-800">0</h2>
+                    <span class="text-[11px] text-slate-400">รายการงานที่ลงบันทึก</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4.5 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-amber-500 flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">กำลังดำเนินการ</span>
+                    <i class="fas fa-spinner text-amber-500 bg-amber-50 p-2 rounded-xl text-sm"></i>
+                </div>
+                <div class="mt-2">
+                    <h2 id="inProgress" class="text-3xl font-extrabold text-amber-600">0</h2>
+                    <span class="text-[11px] text-slate-400">To Do / In Progress</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4.5 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-emerald-500 flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">งานที่ทำสำเร็จแล้ว</span>
+                    <i class="fas fa-circle-check text-emerald-500 bg-emerald-50 p-2 rounded-xl text-sm"></i>
+                </div>
+                <div class="mt-2">
+                    <h2 id="completedProjects" class="text-3xl font-extrabold text-emerald-600">0</h2>
+                    <span class="text-[11px] text-slate-400">Completed 100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productivity Chart -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-chart-simple text-blue-600"></i> <span id="chartTitle">ภาพรวมความก้าวหน้าของภารกิจ (%)</span>
+                </h3>
+                <span class="text-xs text-slate-400 font-medium">อัปเดตอัตโนมัติเมื่อมีการปรับเปลี่ยนผลงาน</span>
+            </div>
+            <div class="h-60"><canvas id="barChart"></canvas></div>
+        </div>
+
+        <!-- View Switcher Bar -->
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <button onclick="switchView('table')" id="viewBtnTable" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-sm transition flex items-center gap-1.5">
+                    <i class="fas fa-table-list"></i> มุมมองตารางบันทึกงาน
+                </button>
+                <button onclick="switchView('cards')" id="viewBtnCards" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-sm transition flex items-center gap-1.5">
+                    <i class="fas fa-grip-vertical"></i> มุมมองการ์ดภารกิจ
+                </button>
+            </div>
+            <span id="dataCount" class="text-xs font-bold bg-slate-200 text-slate-700 px-3 py-1 rounded-full">0 งาน</span>
+        </div>
+
+        <!-- View 1: Main Table -->
+        <div id="tableViewContainer" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-list-check text-blue-600"></i> ตารางบันทึกภารกิจประจำวัน (Daily Task & Achievement Log)
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">คลิก "อัปเดตผลงาน" หรือปุ่ม "✓ สำเร็จ" เพื่อบันทึกความคืบหน้าระหว่างวัน</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold border-b">
+                        <tr>
+                            <th class="p-3.5 whitespace-nowrap">วิศวกรผู้รับผิดชอบ</th>
+                            <th class="p-3.5 bg-blue-50/60 min-w-[280px]">
+                                <i class="fas fa-clipboard-list mr-1 text-blue-600"></i> TO DO LIST (งานที่วางแผนวันนี้)
+                            </th>
+                            <th class="p-3.5 text-center whitespace-nowrap bg-blue-50/40">
+                                <i class="fas fa-calendar-day mr-1 text-blue-600"></i> วันที่ทำ
+                            </th>
+                            <th class="p-3.5 bg-emerald-50/60 min-w-[280px]">
+                                <i class="fas fa-circle-check mr-1 text-emerald-600"></i> TASK ACHIEVEMENT (สิ่งที่ทำเสร็จ)
+                            </th>
+                            <th class="p-3.5 min-w-[180px] bg-rose-50/40">
+                                <i class="fas fa-triangle-exclamation mr-1 text-rose-500"></i> ปัญหา/อุปสรรค (Blockers)
+                            </th>
+                            <th class="p-3.5 text-center whitespace-nowrap">ความคืบหน้า (%)</th>
+                            <th class="p-3.5 text-center whitespace-nowrap">สถานะ</th>
+                            <th class="p-3.5 text-center whitespace-nowrap">จัดการด่วน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- View 2: Cards Grid View -->
+        <div id="cardsViewContainer" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-4 px-6 text-center mt-auto">
+        <p>Daily Task IEThaisoftware Tracking System &copy; All Rights Reserved. ออกแบบสำหรับการติดตาม Daily Standup & ความคืบหน้าประจำวัน</p>
+    </footer>
+
+    <!-- Modals -->
+    <!-- Modal เพิ่ม Daily Task ใหม่ -->
+    <div id="todoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-calendar-plus text-blue-600"></i> เพิ่มงานประจำวัน (New Daily Task)
+                </h3>
+                <button onclick="closeModal('todoModal')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">วิศวกรผู้รับผิดชอบ</label>
+                    <select id="taskMember" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-slate-50 font-medium"></select>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">หัวข้อหลัก / ชื่องานสั้นๆ</label>
+                    <input type="text" id="taskTitle" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-semibold" placeholder="เช่น อบรม VR Station, ติดต่อคู่ค้า, ทดสอบ OPC UA">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">รายละเอียด TO DO LIST (งานที่จะทำวันนี้)</label>
+                    <textarea id="taskProject" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono h-24 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="> รายการที่ 1&#10;- รายละเอียดย่อย&#10;> รายการที่ 2"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">วันที่ปฏิบัติงาน</label>
+                        <input type="date" id="taskTargetDate" class="w-full border border-slate-300 rounded-xl p-2 text-xs font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ระดับความสำคัญ</label>
+                        <select id="taskPriority" class="w-full border border-slate-300 rounded-xl p-2 text-xs font-semibold bg-white">
+                            <option value="ปกติ">ปกติ (Normal)</option>
+                            <option value="ด่วน">ด่วน (High)</option>
+                            <option value="สำคัญมาก">สำคัญมาก (Urgent)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ปัญหา / อุปสรรคที่คาดว่าจะเจอ (ถ้ามี)</label>
+                    <input type="text" id="taskBlocker" class="w-full border border-slate-300 rounded-xl p-2 text-xs" placeholder="เช่น รอไฟล์ layout จากลูกค้า, รอคอนเฟิร์มจากทีมหน้างาน">
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button onclick="closeModal('todoModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm font-semibold transition">ยกเลิก</button>
+                <button onclick="submitTask()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow transition">บันทึกภารกิจ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal อัปเดตผลงาน ACHIEVEMENT ประจำวัน -->
+    <div id="achievementModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-base sm:text-lg font-bold text-emerald-900 flex items-center gap-2">
+                    <i class="fas fa-check-circle text-emerald-600"></i> บันทึกผลงานประจำวัน (Daily Achievement)
+                </h3>
+                <button onclick="closeModal('achievementModal')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">เลือกภารกิจที่ต้องการบันทึก</label>
+                    <select id="achievementTaskSelect" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-slate-50 font-medium"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">สิ่งที่ทำสำเร็จในวันนี้ (What got done today)</label>
+                    <textarea id="achievementDetailText" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono h-24 focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="> ทำอะไรสำเร็จไปแล้วบ้างในวันนี้..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ปัญหา / อุปสรรคที่พบ (Blockers / Obstacles)</label>
+                    <input type="text" id="achievementBlocker" class="w-full border border-slate-300 rounded-xl p-2 text-xs" placeholder="เช่น ซอฟต์แวร์ติดสิทธิ์สิทธิ์ลิขสิทธิ์, อุปกรณ์ไม่พอ">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">วันที่สรุปผลงาน</label>
+                        <input type="date" id="achievementDate" class="w-full border border-slate-300 rounded-xl p-2 text-xs font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ความคืบหน้า (%)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="achievementPercent" class="w-full border border-slate-300 rounded-xl p-2 text-xs font-bold" min="0" max="100" value="100">
+                            <button type="button" onclick="document.getElementById('achievementPercent').value=100; document.getElementById('achievementStatus').value='เสร็จสิ้น';" class="text-[11px] bg-slate-100 hover:bg-slate-200 border px-2 py-1.5 rounded-lg whitespace-nowrap font-semibold">100%</button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">สถานะงาน</label>
+                    <select id="achievementStatus" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-semibold">
+                        <option value="กำลังทำ">กำลังทำ (In Progress)</option>
+                        <option value="เสร็จสิ้น">เสร็จสิ้น (Done)</option>
+                        <option value="รอข้อมูล">รอข้อมูล / ติดปัญหา (Blocked)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button onclick="closeModal('achievementModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm font-semibold transition">ยกเลิก</button>
+                <button onclick="submitAchievementTask()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold shadow transition">บันทึกผลงาน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ซิงค์ Google Sheet -->
+    <div id="gsheetModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <h3 class="text-base sm:text-lg font-bold text-slate-800 border-b pb-2 flex items-center gap-2">
+                <i class="fas fa-link text-blue-600"></i> ซิงค์ Google Sheet
+            </h3>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Google Sheet Auto Sync API</label>
+                <input type="text" id="readUrl" readonly class="w-full border rounded-lg p-2.5 text-xs font-mono bg-slate-50 text-slate-600" placeholder="Apps Script Web App URL">
+                <p class="text-[11px] text-slate-400 mt-1">ระบบเชื่อมต่อ Google Sheet อัตโนมัติเมื่อเปิดเว็บ และตรวจข้อมูลใหม่ทุก 30 วินาที</p>
+            </div>
+            <div class="flex justify-end gap-2 border-t pt-3">
+                <button onclick="closeModal('gsheetModal')" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm">ยกเลิก</button>
+                <button onclick="saveAndSyncSheet()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold">ซิงค์ตอนนี้</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal จัดการสมาชิกทีมวิศวกร -->
+    <div id="memberModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-users-gear text-indigo-600"></i> จัดการรายชื่อวิศวกรในทีม
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">เพิ่มวิศวกรคนใหม่ หรือลบรายชื่อสมาชิกออกจากระบบ</p>
+                </div>
+                <button onclick="closeModal('memberModal')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100 space-y-2">
+                <label class="block text-xs font-bold text-indigo-900">
+                    <i class="fas fa-user-plus mr-1 text-indigo-600"></i> เพิ่มวิศวกรคนใหม่
+                </label>
+                <div class="flex gap-2">
+                    <input type="text" id="newMemberName" class="flex-1 border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ระบุชื่อ เช่น Anucha (บาส)">
+                    <button onclick="addNewMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fas fa-plus"></i> เพิ่มสมาชิก
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                        รายชื่อวิศวกรปัจจุบัน (<span id="memberTotalCount">0</span> คน)
+                    </span>
+                    <span class="text-[11px] text-slate-400">* ลบสมาชิกเพื่อตัดออกจากตัวเลือก</span>
+                </div>
+                <div id="memberListContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t">
+                <button onclick="closeModal('memberModal')" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันการลบ -->
+    <div id="confirmDialogModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <div>
+                <h4 class="text-base font-bold text-slate-800" id="confirmDialogTitle">ยืนยันการลบ?</h4>
+                <p class="text-xs text-slate-500 mt-1" id="confirmDialogMessage">คุณแน่ใจหรือไม่ว่าต้องการดำเนินการนี้?</p>
+            </div>
+            <div class="flex justify-center gap-2 pt-2">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">ยกเลิก</button>
+                <button id="confirmDialogBtn" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow transition">ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Message -->
+    <div id="toastMessage" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <i id="toastIcon" class="fas fa-info-circle text-blue-400 text-sm"></i>
+        <span id="toastText">ข้อความแจ้งเตือน</span>
+    </div>
+
+    <!-- Script Block -->
+    <script>
+        // กำหนดวันที่ปัจจุบันในรูปแบบ YYYY-MM-DD
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
+
+        // =====================================================
+        // GOOGLE SHEET AUTO SYNC (Apps Script Web App)
+        // =====================================================
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxIjFMp5KCmjLQ5Yb93SJKNevtGHMmaWAjTb93qSS_-Mj8XSu1jUDr9A8D5fdoNtpobaQ/exec';
+        const AUTO_SYNC_MS = 30000; // ซิงค์ทุก 30 วินาที
+        let autoSyncTimer = null;
+        let isSyncing = false;
+
+        function normalizeDate(value) {
+            if (!value || value === '-') return '';
+            const s = String(value).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+            const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if (m) {
+                let year = Number(m[3]);
+                if (year > 2400) year -= 543;
+                return `${year.toString().padStart(4,'0')}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+            }
+            return s;
+        }
+
+        function sheetRowToTask(r, idx) {
+            const member = r['วิศวกรผู้รับผิดชอบ'] || r['ชื่อ-นามสกุล'] || 'Unknown';
+            if (member !== 'Unknown' && !teamMembers.includes(member)) teamMembers.push(member);
+
+            const rawId = Number(r['ID']);
+            return {
+                id: Number.isFinite(rawId) && rawId > 0 ? rawId : (Date.now() + idx),
+                memberName: member,
+                projectTitle: r['หัวข้องาน'] || r['หัวข้อ / รายการแผนงาน (TO DO LIST)'] || 'Daily Task',
+                projectDetail: r['TO DO LIST'] || r['TO DO LIST (รายการงาน)'] || '-',
+                todoDate: normalizeDate(r['วันที่ทำ'] || r['วันที่ TO DO']) || todayStr,
+                priority: r['ระดับความสำคัญ'] || 'ปกติ',
+                achievementText: r['TASK ACHIEVEMENT'] || r['TASK ACHIEVEMENT (สิ่งที่สำเร็จ)'] || '-',
+                achievedDate: normalizeDate(r['วันที่สำเร็จ'] || r['วันที่ ACHIEVEMENT']) || todayStr,
+                blocker: r['ปัญหาและอุปสรรค'] || '-',
+                actual: parseFloat(r['ความคืบหน้า (%)'] || r['ผลงาน (%)'] || 0) || 0,
+                status: r['สถานะ'] || 'กำลังทำ'
+            };
+        }
+
+        function taskToSheet(item) {
+            return {
+                'ID': item.id,
+                'วิศวกรผู้รับผิดชอบ': item.memberName,
+                'หัวข้องาน': item.projectTitle,
+                'TO DO LIST': item.projectDetail,
+                'วันที่ทำ': item.todoDate,
+                'ระดับความสำคัญ': item.priority || 'ปกติ',
+                'TASK ACHIEVEMENT': item.achievementText || '-',
+                'วันที่สำเร็จ': item.achievedDate || item.todoDate || todayStr,
+                'ปัญหาและอุปสรรค': item.blocker || '-',
+                'ความคืบหน้า (%)': item.actual || 0,
+                'สถานะ': item.status || 'กำลังทำ'
+            };
+        }
+
+        async function apiPost(action, itemOrId) {
+            const payload = action === 'delete'
+                ? { action, id: Number(itemOrId) }
+                : { action, data: taskToSheet(itemOrId) };
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.error || 'Google Sheet API error');
+            return result;
+        }
+
+        async function syncFromGoogleSheet(silent = true) {
+            if (isSyncing) return;
+            isSyncing = true;
+            try {
+                const response = await fetch(`${API_URL}?t=${Date.now()}`, { cache: 'no-store' });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || 'อ่าน Google Sheet ไม่สำเร็จ');
+
+                allData = (result.data || []).map(sheetRowToTask);
+                localStorage.setItem('dailyTaskData', JSON.stringify(allData));
+                renderMemberUI();
+                updateDashboard();
+                if (!silent) showToast('ซิงค์ Google Sheet เรียบร้อยแล้ว', 'fa-cloud-arrow-down', 'text-emerald-400');
+            } catch (error) {
+                console.error('Auto Sync Error:', error);
+                if (!silent) showToast('ซิงค์ Google Sheet ไม่สำเร็จ กำลังใช้ข้อมูลในเครื่อง', 'fa-circle-xmark', 'text-rose-400');
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        // รายชื่อสมาชิกเริ่มต้นของทีม
+        let teamMembers = [
+            "Panuphong (สกาย)",
+            "Inthanon (ฟลุ๊ค)",
+            "Watcharaphol (ต้า)",
+            "Korawit (ฟลุ๊ค)",
+            "Suchanat (แพรว)",
+            "Naritsara (อาย)"
+        ];
+
+        // ฐานข้อมูลงาน Daily Task: โหลดจาก LocalStorage แล้วซิงค์กับ Google Sheet
+        let allData = [];
+
+        let activeMember = "ALL";
+        let currentPreset = "all";
+        let startDateVal = "";
+        let endDateVal = "";
+        let currentView = "table";
+        let myChart = null;
+
+        let confirmActionCallback = null;
+
+        // เปิดหน้าเว็บ: ใช้ข้อมูลในเครื่องเป็น fallback แล้วซิงค์จาก Google Sheet ทันที
+        window.onload = async () => {
+            document.getElementById('taskTargetDate').value = todayStr;
+            document.getElementById('achievementDate').value = todayStr;
+
+            const readUrl = document.getElementById('readUrl');
+            if (readUrl) readUrl.value = API_URL;
+
+            const savedData = localStorage.getItem('dailyTaskData');
+            if (savedData) {
+                try {
+                    allData = JSON.parse(savedData);
+                } catch (e) {
+                    console.error('Error parsing saved data', e);
+                }
+            }
+
+            renderMemberUI();
+            updateDashboard();
+
+            // ดึงข้อมูลจริงจาก Google Sheet ทันที ไม่ต้องกด Sync
+            await syncFromGoogleSheet(true);
+
+            // ซิงค์ซ้ำอัตโนมัติทุก 30 วินาที
+            if (autoSyncTimer) clearInterval(autoSyncTimer);
+            autoSyncTimer = setInterval(() => {
+                if (!document.hidden) syncFromGoogleSheet(true);
+            }, AUTO_SYNC_MS);
+        };
+
+        // รองรับชื่อฟังก์ชันเดิมของหน้าเว็บ แต่เปลี่ยนให้ใช้ Apps Script API
+        function autoSyncSheet() {
+            return syncFromGoogleSheet(true);
+        }
+
+        async function saveAndSyncSheet() {
+            await syncFromGoogleSheet(false);
+            const modal = document.getElementById('gsheetModal');
+            if (modal) closeModal('gsheetModal');
+        }
+
+        async function submitTask() {
+            const memberName = document.getElementById('taskMember').value;
+            const projectTitle = document.getElementById('taskTitle').value.trim();
+            const projectDetail = document.getElementById('taskProject').value.trim();
+            const todoDate = document.getElementById('taskTargetDate').value || todayStr;
+            const priority = document.getElementById('taskPriority').value;
+            const blocker = document.getElementById('taskBlocker').value.trim() || '-';
+
+            if(!projectDetail && !projectTitle) {
+                showToast('กรุณาระบุรายละเอียดงาน Daily Task', 'fa-triangle-exclamation', 'text-amber-400');
+                return;
+            }
+
+            const finalTitle = projectTitle || projectDetail.split('\n')[0].replace('>','').trim() || 'Daily Task';
+            const newItem = {
+                id: Date.now(),
+                memberName,
+                projectTitle: finalTitle,
+                projectDetail: projectDetail || finalTitle,
+                todoDate,
+                priority,
+                achievementText: '-',
+                achievedDate: todoDate,
+                blocker,
+                actual: 0,
+                status: 'กำลังทำ'
+            };
+
+            try {
+                await apiPost('create', newItem);
+                await syncFromGoogleSheet(true);
+                closeModal('todoModal');
+                document.getElementById('taskTitle').value = '';
+                document.getElementById('taskProject').value = '';
+                document.getElementById('taskBlocker').value = '';
+                showToast('บันทึก Daily Task ลง Google Sheet เรียบร้อยแล้ว', 'fa-circle-check', 'text-emerald-400');
+            } catch (error) {
+                console.error(error);
+                showToast('บันทึก Google Sheet ไม่สำเร็จ', 'fa-circle-xmark', 'text-rose-400');
+            }
+        }
+
+        async function quickMarkDone(id) {
+            const item = allData.find(d => d.id === Number(id));
+            if(!item) return;
+
+            const updated = { ...item };
+            updated.actual = 100;
+            updated.status = 'เสร็จสิ้น';
+            updated.achievedDate = todayStr;
+            if(!updated.achievementText || updated.achievementText === '-') {
+                updated.achievementText = 'เสร็จสิ้นตามแผนงานที่ระบุ';
+            }
+
+            try {
+                await apiPost('update', updated);
+                await syncFromGoogleSheet(true);
+                showToast('ทำเครื่องหมายงานเสร็จสิ้น 100% และซิงค์แล้ว', 'fa-circle-check', 'text-emerald-400');
+            } catch (error) {
+                console.error(error);
+                showToast('อัปเดต Google Sheet ไม่สำเร็จ', 'fa-circle-xmark', 'text-rose-400');
+            }
+        }
+
+        async function submitAchievementTask() {
+            const selectedId = parseInt(document.getElementById('achievementTaskSelect').value, 10);
+            const achievementText = document.getElementById('achievementDetailText').value.trim();
+            const blocker = document.getElementById('achievementBlocker').value.trim() || '-';
+            const achievedDate = document.getElementById('achievementDate').value || todayStr;
+            const actual = parseFloat(document.getElementById('achievementPercent').value) || 0;
+            const status = document.getElementById('achievementStatus').value;
+
+            const targetItem = allData.find(d => d.id === selectedId);
+            if(!targetItem) return;
+
+            const updated = { ...targetItem };
+            updated.achievementText = achievementText || '-';
+            updated.blocker = blocker;
+            updated.achievedDate = achievedDate;
+            updated.actual = actual;
+            updated.status = actual >= 100 ? 'เสร็จสิ้น' : status;
+
+            try {
+                await apiPost('update', updated);
+                await syncFromGoogleSheet(true);
+                closeModal('achievementModal');
+                showToast('บันทึกผลงานและซิงค์ Google Sheet สำเร็จ', 'fa-circle-check', 'text-emerald-400');
+            } catch (error) {
+                console.error(error);
+                showToast('อัปเดต Google Sheet ไม่สำเร็จ', 'fa-circle-xmark', 'text-rose-400');
+            }
+        }
+
+        function deleteTask(id) {
+            showConfirm(
+                'ต้องการลบภารกิจนี้?',
+                'ข้อมูลภารกิจนี้จะถูกลบออกจาก Google Sheet ด้วย',
+                async () => {
+                    try {
+                        await apiPost('delete', Number(id));
+                        await syncFromGoogleSheet(true);
+                        showToast('ลบภารกิจจาก Google Sheet เรียบร้อยแล้ว', 'fa-trash-can', 'text-rose-400');
+                    } catch (error) {
+                        console.error(error);
+                        showToast('ลบข้อมูลจาก Google Sheet ไม่สำเร็จ', 'fa-circle-xmark', 'text-rose-400');
+                    }
+                }
+            );
+        }
+
+        function showToast(text, iconClass = "fa-circle-check", iconColor = "text-emerald-400") {
+            const toast = document.getElementById('toastMessage');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastText.innerText = text;
+            toastIcon.className = `fas ${iconClass} ${iconColor} text-sm`;
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        function showConfirm(title, message, onConfirm) {
+            document.getElementById('confirmDialogTitle').innerText = title;
+            document.getElementById('confirmDialogMessage').innerText = message;
+            confirmActionCallback = onConfirm;
+            document.getElementById('confirmDialogModal').classList.remove('hidden');
+
+            document.getElementById('confirmDialogBtn').onclick = () => {
+                if(confirmActionCallback) confirmActionCallback();
+                closeConfirmModal();
+            };
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmDialogModal').classList.add('hidden');
+            confirmActionCallback = null;
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function renderMemberUI() {
+            const currentUserSelect = document.getElementById('currentUser');
+            currentUserSelect.innerHTML = `<option value="ALL" class="bg-slate-800">แสดงทุกคน (Team Overview)</option>`;
+            
+            const taskMemberSelect = document.getElementById('taskMember');
+            taskMemberSelect.innerHTML = '';
+
+            const pillContainer = document.getElementById('memberPillContainer');
+            pillContainer.innerHTML = `
+                <button onclick="selectMember('ALL')" id="btn-ALL" class="member-pill ${activeMember === 'ALL' ? 'active-member-pill' : ''} px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 transition-all flex items-center gap-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+                    <i class="fas fa-globe"></i> แสดงทุกคน (ALL)
+                </button>
+            `;
+
+            const memberListContainer = document.getElementById('memberListContainer');
+            memberListContainer.innerHTML = '';
+            document.getElementById('memberTotalCount').innerText = teamMembers.length;
+
+            teamMembers.forEach(member => {
+                const shortName = member.split(' ')[0];
+
+                const opt1 = document.createElement('option');
+                opt1.value = shortName;
+                opt1.className = "bg-slate-800";
+                opt1.innerText = member;
+                currentUserSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = member;
+                opt2.innerText = member;
+                taskMemberSelect.appendChild(opt2);
+
+                const isActive = (activeMember === shortName || activeMember === member);
+                pillContainer.innerHTML += `
+                    <button onclick="selectMember('${shortName}')" id="btn-${shortName}" class="member-pill ${isActive ? 'active-member-pill' : ''} px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 transition-all flex items-center gap-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+                        <i class="fas fa-user-gear"></i> ${member}
+                    </button>
+                `;
+
+                const taskCount = allData.filter(d => d.memberName.toLowerCase().includes(shortName.toLowerCase())).length;
+
+                memberListContainer.innerHTML += `
+                    <div class="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span class="text-sm font-semibold text-slate-800">${member}</span>
+                            <span class="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium">${taskCount} งาน</span>
+                        </div>
+                        <button onclick="removeMember('${member}')" class="text-xs text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition" title="ลบรายชื่อสมาชิกคนนี้">
+                            <i class="fas fa-trash-alt"></i> ตัดออก
+                        </button>
+                    </div>
+                `;
+            });
+
+            currentUserSelect.value = activeMember;
+        }
+
+        function addNewMember() {
+            const input = document.getElementById('newMemberName');
+            const name = input.value.trim();
+
+            if(!name) {
+                showToast("กรุณาระบุชื่อวิศวกรที่ต้องการเพิ่ม", "fa-triangle-exclamation", "text-amber-400");
+                return;
+            }
+
+            if(teamMembers.some(m => m.toLowerCase() === name.toLowerCase())) {
+                showToast("มีชื่อสมาชิกท่านนี้อยู่ในระบบแล้ว", "fa-circle-exclamation", "text-amber-400");
+                return;
+            }
+
+            teamMembers.push(name);
+            input.value = '';
+            renderMemberUI();
+            showToast(`เพิ่มวิศวกร "${name}" เรียบร้อยแล้ว`, "fa-user-check", "text-emerald-400");
+        }
+
+        function removeMember(member) {
+            showConfirm(
+                `ตัดรายชื่อสมาชิก "${member}"?`,
+                "การตัดสมาชิกจะนำชื่อออกจากตัวเลือกและฟิลเตอร์ (งานในอดีตยังคงอยู่ในระบบ)",
+                () => {
+                    teamMembers = teamMembers.filter(m => m !== member);
+                    const shortName = member.split(' ')[0];
+                    if(activeMember === shortName || activeMember === member) {
+                        activeMember = "ALL";
+                    }
+                    renderMemberUI();
+                    updateDashboard();
+                    showToast(`ตัดสมาชิก "${member}" เรียบร้อยแล้ว`, "fa-user-minus", "text-blue-400");
+                }
+            );
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const tableCont = document.getElementById('tableViewContainer');
+            const cardsCont = document.getElementById('cardsViewContainer');
+            const btnTable = document.getElementById('viewBtnTable');
+            const btnCards = document.getElementById('viewBtnCards');
+
+            if(view === 'table') {
+                tableCont.classList.remove('hidden');
+                cardsCont.classList.add('hidden');
+                btnTable.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-sm transition flex items-center gap-1.5";
+                btnCards.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-sm transition flex items-center gap-1.5";
+            } else {
+                tableCont.classList.add('hidden');
+                cardsCont.classList.remove('hidden');
+                btnCards.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-sm transition flex items-center gap-1.5";
+                btnTable.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-sm transition flex items-center gap-1.5";
+            }
+        }
+
+        function selectMember(memberKey) {
+            activeMember = memberKey;
+            document.getElementById('currentUser').value = memberKey;
+            document.querySelectorAll('.member-pill').forEach(btn => btn.classList.remove('active-member-pill'));
+            const activeBtn = document.getElementById(`btn-${memberKey}`);
+            if(activeBtn) activeBtn.classList.add('active-member-pill');
+            updateDashboard();
+        }
+
+        function setDatePreset(preset) {
+            currentPreset = preset;
+            document.querySelectorAll('.date-preset').forEach(b => b.classList.remove('active-date-pill'));
+            const activePresetBtn = document.getElementById(`preset-${preset}`);
+            if(activePresetBtn) activePresetBtn.classList.add('active-date-pill');
+
+            const curr = new Date();
+            if(preset === 'all') {
+                startDateVal = "";
+                endDateVal = "";
+            } else if(preset === 'today') {
+                startDateVal = todayStr;
+                endDateVal = todayStr;
+            } else if(preset === 'yesterday') {
+                const yest = new Date(curr);
+                yest.setDate(curr.getDate() - 1);
+                const yestStr = yest.toISOString().split('T')[0];
+                startDateVal = yestStr;
+                endDateVal = yestStr;
+            } else if(preset === 'thisWeek') {
+                const startOfWeek = new Date(curr);
+                const day = curr.getDay() || 7; 
+                startOfWeek.setDate(curr.getDate() - day + 1);
+                startDateVal = startOfWeek.toISOString().split('T')[0];
+                endDateVal = todayStr;
+            }
+
+            document.getElementById('startDateFilter').value = startDateVal;
+            document.getElementById('endDateFilter').value = endDateVal;
+            updateDashboard();
+        }
+
+        function filterByCalendarRange() {
+            startDateVal = document.getElementById('startDateFilter').value;
+            endDateVal = document.getElementById('endDateFilter').value;
+            document.querySelectorAll('.date-preset').forEach(b => b.classList.remove('active-date-pill'));
+            updateDashboard();
+        }
+
+        function clearCalendarFilter() {
+            setDatePreset('all');
+        }
+
+        function formatDate(dateStr) {
+            if(!dateStr || dateStr === '-') return '-';
+            const parts = dateStr.split('-');
+            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+        }
+
+        function openAchievementModal(selectedId = null) {
+            const select = document.getElementById('achievementTaskSelect');
+            select.innerHTML = '';
+
+            let filtered = activeMember === 'ALL' ? allData : allData.filter(d => d.memberName.toLowerCase().includes(activeMember.toLowerCase()));
+            if(filtered.length === 0) {
+                showToast("ไม่มีรายการงานสำหรับบันทึกผลงาน", "fa-triangle-exclamation", "text-amber-400");
+                return;
+            }
+
+            filtered.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.innerText = `[${item.memberName.split(' ')[0]}] ${item.projectTitle}`;
+                if(selectedId && item.id === selectedId) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            const currentId = selectedId || (filtered[0] ? filtered[0].id : null);
+            if(currentId) {
+                const item = allData.find(d => d.id === currentId);
+                if(item) {
+                    document.getElementById('achievementDetailText').value = item.achievementText === '-' ? '' : item.achievementText;
+                    document.getElementById('achievementBlocker').value = item.blocker === '-' ? '' : item.blocker;
+                    document.getElementById('achievementPercent').value = item.actual;
+                    document.getElementById('achievementStatus').value = item.status;
+                    document.getElementById('achievementDate').value = item.achievedDate !== '-' ? item.achievedDate : todayStr;
+                }
+            }
+
+            select.onchange = (e) => {
+                const chosen = allData.find(d => d.id === parseInt(e.target.value, 10));
+                if(chosen) {
+                    document.getElementById('achievementDetailText').value = chosen.achievementText === '-' ? '' : chosen.achievementText;
+                    document.getElementById('achievementBlocker').value = chosen.blocker === '-' ? '' : chosen.blocker;
+                    document.getElementById('achievementPercent').value = chosen.actual;
+                    document.getElementById('achievementStatus').value = chosen.status;
+                }
+            };
+
+            openModal('achievementModal');
+        }
+
+        function updateDashboard() {
+            let filteredData = allData;
+
+            if(activeMember !== 'ALL') {
+                filteredData = filteredData.filter(d => d.memberName.toLowerCase().includes(activeMember.toLowerCase()));
+                document.getElementById('activeUserBadge').innerText = `Active: ${activeMember} (วิศวกร)`;
+                document.getElementById('chartTitle').innerText = `ความก้าวหน้าภารกิจของ ${activeMember} (%)`;
+            } else {
+                document.getElementById('activeUserBadge').innerText = `Active: แสดงทุกคน (Team Overview)`;
+                document.getElementById('chartTitle').innerText = `ภาพรวมความก้าวหน้าของภารกิจเฉลี่ย (%)`;
+            }
+
+            if(startDateVal || endDateVal) {
+                filteredData = filteredData.filter(d => {
+                    const itemTarget = d.todoDate || '';
+                    const itemAchieved = d.achievedDate || '';
+                    let matchStart = startDateVal ? (itemTarget >= startDateVal || itemAchieved >= startDateVal) : true;
+                    let matchEnd = endDateVal ? (itemTarget <= endDateVal || itemAchieved <= endDateVal) : true;
+                    return matchStart && matchEnd;
+                });
+
+                const startText = startDateVal ? formatDate(startDateVal) : 'จุดเริ่มต้น';
+                const endText = endDateVal ? formatDate(endDateVal) : 'ปัจจุบัน';
+                document.getElementById('filterResultNotice').innerHTML = `<i class="fas fa-filter text-blue-600"></i> แสดงภารกิจวันที่: <strong class="text-blue-700">${startText} ถึง ${endText}</strong> (${filteredData.length} งาน)`;
+            } else {
+                document.getElementById('filterResultNotice').innerHTML = `<i class="fas fa-circle-info text-blue-600"></i> แสดงภารกิจทั้งหมด (${filteredData.length} งาน)`;
+            }
+
+            document.getElementById('totalProjects').innerText = filteredData.length;
+            document.getElementById('dataCount').innerText = `${filteredData.length} ภารกิจ`;
+
+            const comp = filteredData.filter(d => d.status.includes('เสร็จ')).length;
+            const prog = filteredData.filter(d => !d.status.includes('เสร็จ')).length;
+
+            document.getElementById('completedProjects').innerText = comp;
+            document.getElementById('inProgress').innerText = prog;
+
+            let totAct = 0;
+            filteredData.forEach(d => { totAct += (d.actual || 0); });
+            const avg = filteredData.length > 0 ? (totAct / filteredData.length) : 0;
+            document.getElementById('avgScore').innerText = `${avg.toFixed(1)}%`;
+
+            renderChart(filteredData);
+            renderMainTable(filteredData);
+            renderCardsView(filteredData);
+        }
+
+        function renderMainTable(dataSet) {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            if(dataSet.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-inbox text-3xl mb-2 block text-slate-300"></i>ไม่พบรายการภารกิจประจำวันตามเงื่อนไขที่เลือก</td></tr>`;
+                return;
+            }
+
+            dataSet.forEach(r => {
+                let badgeClass = "bg-amber-100 text-amber-800 border border-amber-200";
+                if(r.status.includes('เสร็จ')) {
+                    badgeClass = "bg-emerald-100 text-emerald-800 border border-emerald-200";
+                } else if(r.status.includes('รอ') || r.status.includes('ติด')) {
+                    badgeClass = "bg-rose-100 text-rose-800 border border-rose-200";
+                }
+
+                let priorityBadge = "";
+                if(r.priority === "สำคัญมาก") {
+                    priorityBadge = `<span class="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">ด่วนที่สุด</span>`;
+                } else if(r.priority === "ด่วน") {
+                    priorityBadge = `<span class="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">ด่วน</span>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/80 transition border-b border-slate-100 align-top">
+                        <td class="p-3.5">
+                            <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                                <i class="fas fa-user-circle text-slate-400"></i> ${r.memberName}
+                            </div>
+                            <div class="text-[11px] font-semibold text-blue-600 mt-1 flex items-center gap-1">
+                                ${priorityBadge} ${r.projectTitle}
+                            </div>
+                        </td>
+                        <td class="p-3.5 font-medium text-slate-700 bg-blue-50/20 whitespace-pre-line text-xs leading-relaxed border-l border-blue-100/50">
+                            ${r.projectDetail}
+                        </td>
+                        <td class="p-3.5 text-center text-xs text-blue-600 font-bold bg-blue-50/10 whitespace-nowrap">
+                            <i class="fas fa-calendar-day mr-1"></i>${formatDate(r.todoDate)}
+                        </td>
+                        <td class="p-3.5 font-medium text-slate-700 bg-emerald-50/20 whitespace-pre-line text-xs leading-relaxed border-l border-emerald-100/50">
+                            ${r.achievementText !== '-' ? r.achievementText : '<span class="text-slate-300 italic">ยังไม่ได้ลงผลงาน</span>'}
+                            ${r.achievedDate && r.achievedDate !== '-' ? `<div class="text-[10px] text-emerald-600 font-semibold mt-1"><i class="fas fa-clock mr-1"></i>${formatDate(r.achievedDate)}</div>` : ''}
+                        </td>
+                        <td class="p-3.5 text-xs text-rose-600 bg-rose-50/20 leading-relaxed border-l border-rose-100/50">
+                            ${r.blocker && r.blocker !== '-' ? `<span class="font-medium"><i class="fas fa-circle-exclamation mr-1"></i>${r.blocker}</span>` : '<span class="text-slate-300">-</span>'}
+                        </td>
+                        <td class="p-3.5 text-center whitespace-nowrap">
+                            <div class="font-extrabold text-blue-600 text-sm">${r.actual}%</div>
+                            <div class="w-16 bg-slate-200 rounded-full h-1.5 mx-auto mt-1 overflow-hidden">
+                                <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(r.actual, 100)}%"></div>
+                            </div>
+                        </td>
+                        <td class="p-3.5 text-center whitespace-nowrap">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                                ${r.status}
+                            </span>
+                        </td>
+                        <td class="p-3.5 text-center whitespace-nowrap">
+                            <div class="flex items-center justify-center gap-1.5">
+                                ${r.actual < 100 ? `
+                                <button onclick="quickMarkDone(${r.id})" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded-lg font-semibold shadow transition" title="กดเสร็จสิ้นทันที">
+                                    <i class="fas fa-check"></i>
+                                </button>` : ''}
+                                <button onclick="openAchievementModal(${r.id})" class="text-xs bg-white text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-300 font-semibold shadow-sm transition" title="อัปเดตผลงาน">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteTask(${r.id})" class="text-rose-400 hover:text-rose-600 p-1 transition" title="ลบงาน">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderCardsView(dataSet) {
+            const container = document.getElementById('cardsViewContainer');
+            container.innerHTML = '';
+
+            if(dataSet.length === 0) {
+                container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 font-medium">ไม่พบภารกิจ</div>`;
+                return;
+            }
+
+            dataSet.forEach(r => {
+                const isDone = r.status.includes('เสร็จ');
+                container.innerHTML += `
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                        <div>
+                            <div class="flex justify-between items-start gap-2 border-b pb-2 mb-3">
+                                <div>
+                                    <span class="text-[11px] font-bold text-blue-600 uppercase tracking-wide flex items-center gap-1">
+                                        <i class="fas fa-user-circle"></i> ${r.memberName}
+                                    </span>
+                                    <h4 class="font-bold text-slate-800 text-sm mt-0.5">${r.projectTitle}</h4>
+                                </div>
+                                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                    ${r.status}
+                                </span>
+                            </div>
+
+                            <div class="space-y-2 mb-3">
+                                <div class="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100">
+                                    <span class="text-[10px] font-bold text-blue-800 uppercase block mb-0.5"><i class="fas fa-tasks mr-1"></i>TO DO LIST:</span>
+                                    <p class="text-xs text-slate-700 whitespace-pre-line leading-relaxed font-mono">${r.projectDetail}</p>
+                                </div>
+
+                                <div class="bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
+                                    <span class="text-[10px] font-bold text-emerald-800 uppercase block mb-0.5"><i class="fas fa-circle-check mr-1"></i>ACHIEVEMENT:</span>
+                                    <p class="text-xs text-slate-700 whitespace-pre-line leading-relaxed font-mono">${r.achievementText !== '-' ? r.achievementText : '<span class="text-slate-400">ยังไม่ลงบันทึก</span>'}</p>
+                                </div>
+
+                                ${r.blocker && r.blocker !== '-' ? `
+                                <div class="bg-rose-50/50 p-2 rounded-xl border border-rose-100 text-xs text-rose-700">
+                                    <strong><i class="fas fa-exclamation-circle mr-1"></i>ปัญหา:</strong> ${r.blocker}
+                                </div>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-3 flex items-center justify-between mt-2">
+                            <div>
+                                <span class="text-[11px] text-slate-400 block">วันที่: ${formatDate(r.todoDate)}</span>
+                                <span class="text-sm font-extrabold text-blue-600">${r.actual}%</span>
+                            </div>
+                            <div class="flex gap-1.5">
+                                ${!isDone ? `
+                                <button onclick="quickMarkDone(${r.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow">✓ สำเร็จ</button>
+                                ` : ''}
+                                <button onclick="openAchievementModal(${r.id})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">อัปเดต</button>
+                                <button onclick="deleteTask(${r.id})" class="px-2 py-1 text-rose-500 hover:text-rose-700 text-xs"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderChart(dataSet) {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            let labels = [], data = [];
+
+            if(activeMember === 'ALL') {
+                const stats = {};
+                dataSet.forEach(d => {
+                    const name = d.memberName.split(' ')[0];
+                    if(!stats[name]) stats[name] = { sum: 0, count: 0 };
+                    stats[name].sum += (d.actual || 0);
+                    stats[name].count += 1;
+                });
+                labels = Object.keys(stats);
+                data = labels.map(l => (stats[l].sum / stats[l].count).toFixed(1));
+            } else {
+                labels = dataSet.map(d => d.projectTitle.length > 20 ? d.projectTitle.substring(0,20)+'...' : d.projectTitle);
+                data = dataSet.map(d => d.actual || 0);
+            }
+
+            if(myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Achievement (%)',
+                        data: data,
+                        backgroundColor: activeMember === 'ALL' ? '#2563eb' : '#059669',
+                        borderRadius: 6,
+                        barThickness: 28
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) syncFromGoogleSheet(true);
+        });
+
+        function exportCSV() {
+            const formattedExport = allData.map(d => ({
+                "วิศวกรผู้รับผิดชอบ": d.memberName,
+                "หัวข้องาน": d.projectTitle,
+                "TO DO LIST": d.projectDetail,
+                "วันที่ทำ": d.todoDate,
+                "ระดับความสำคัญ": d.priority || "ปกติ",
+                "TASK ACHIEVEMENT": d.achievementText,
+                "วันที่สำเร็จ": d.achievedDate,
+                "ปัญหาและอุปสรรค": d.blocker || "-",
+                "ความคืบหน้า (%)": d.actual,
+                "สถานะ": d.status
+            }));
+
+            const csv = Papa.unparse(formattedExport);
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `IEThaisoftware_Daily_Tasks_${todayStr}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
